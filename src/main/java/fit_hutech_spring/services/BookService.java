@@ -35,12 +35,22 @@ public class BookService {
     }
 
     // 3. Cập nhật sách
-    public void updateBook(Book book) {
-        bookRepository.save(book); // Hàm save trong JPA tự động hiểu là update nếu ID đã tồn tại
+    public void updateBook(@NotNull Book book) {
+        Book existingBook = bookRepository.findById(book.getId()).orElse(null);
+        Objects.requireNonNull(existingBook).setTitle(book.getTitle());
+        existingBook.setAuthor(book.getAuthor());
+        existingBook.setPrice(book.getPrice());
+        existingBook.setCategory(book.getCategory());
+        bookRepository.save(existingBook);
     }
 
     // 4. Xóa sách
     public void deleteBook(Long id) {
         bookRepository.deleteById(id);
+    }
+
+    // 5. Tìm kiếm sách theo từ khóa
+    public List<Book> searchBook(String keyword) {
+        return bookRepository.searchBook(keyword);
     }
 }

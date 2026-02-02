@@ -50,7 +50,8 @@ public class CartController {
     // Thêm hàm Checkout nếu cần
     @GetMapping("/checkout")
     public String checkout(HttpSession session) {
-        cartService.removeCart(session);
-        return "redirect:/books"; // Thanh toán xong quay về trang chủ
+        cartService.saveCart(session);
+        return "redirect:/cart";
     }
+
 }

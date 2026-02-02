@@ -5,10 +5,14 @@ import fit_hutech_spring.entities.Book;
 import fit_hutech_spring.services.BookService;
 import fit_hutech_spring.services.CategoryService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 @Controller
@@ -44,36 +48,66 @@ public class BookController {
         }
 
         @PostMapping("/add")
-        public String addBook(@ModelAttribute("book") Book book) {
+        public String addBook(
+                        @Valid @ModelAttribute("book") Book book,
+                        @NotNull BindingResult bindingResult,
+                        Model model) {
+                if (bindingResult.hasErrors()) {
+                        var errors = bindingResult.getAllErrors()
+                                        .stream()
+                                        .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                                        .toArray(String[]::new);
+                        model.addAttribute("errors", errors);
+                        model.addAttribute("categories",
+                                        categoryService.getAllCategories());
+                        return "book/add";
+                }
                 bookService.addBook(book);
                 return "redirect:/books";
         }
 
         // --- UPDATE (Sửa) ---
         @GetMapping("/edit/{id}")
-        public String editBookForm(@PathVariable("id") Long id, Model model) {
-                Book book = bookService.getBookById(id);
-                if (book != null) {
-                        model.addAttribute("book", book);
-                        model.addAttribute("categories", categoryService.getAllCategories());
-                        return "book/edit";
-                }
-                return "redirect:/books";
+        public String editBookForm(@NotNull Model model, @PathVariable long id) {
+                var book = java.util.Optional.ofNullable(bookService.getBookById(id));
+
+                model.addAttribute("book", book.orElseThrow(() -> new IllegalArgumentException("Book not found")));
+                model.addAttribute("categories", categoryService.getAllCategories());
+
+                return "book/edit";
         }
 
         @PostMapping("/edit")
-        public String editBook(@ModelAttribute("book") Book book) {
+        public String editBook(@Valid @ModelAttribute("book") Book book,
+                        @NotNull BindingResult bindingResult,
+                        Model model) {
+                if (bindingResult.hasErrors()) {
+                        var errors = bindingResult.getAllErrors()
+                                        .stream()
+                                        .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                                        .toArray(String[]::new);
+                        model.addAttribute("errors", errors);
+                        model.addAttribute("categories",
+                                        categoryService.getAllCategories());
+                        return "book/edit";
+                }
                 bookService.updateBook(book);
                 return "redirect:/books";
         }
 
         // --- DELETE (Xóa) ---
         @GetMapping("/delete/{id}")
-        public String deleteBook(@PathVariable("id") Long id) {
-                bookService.deleteBook(id);
+        public String deleteBook(@PathVariable long id) {
+                Book book = bookService.getBookById(id);
+
+                if (book != null) {
+                        bookService.deleteBook(id);
+                } else {
+                        throw new IllegalArgumentException("Book not found");
+                }
+
                 return "redirect:/books";
         }
-
         // --- ADD TO CART ---
 
         @PostMapping("/add-to-cart")
@@ -86,5 +120,25 @@ public class BookController {
                 cart.addItems(new Item(id, name, price, quantity));
                 cartService.updateCart(session, cart);
                 return "redirect:/books";
+        }
+
+        // --- SEARCH (Tìm kiếm sách) ---
+
+        @GetMapping("/search")
+        public String searchBook(
+                        @NotNull Model model,
+                        @RequestParam String keyword,
+                        @RequestParam(defaultValue = "0") Integer pageNo,
+                        @RequestParam(defaultValue = "20") Integer pageSize,
+                        @RequestParam(defaultValue = "id") String sortBy) {
+                model.addAttribute("books", bookService.searchBook(keyword));
+                model.addAttribute("currentPage", pageNo);
+                model.addAttribute("totalPages",
+                                bookService
+                                                .getAllBooks(pageNo, pageSize, sortBy)
+                                                .size() / pageSize);
+                model.addAttribute("categories",
+                                categoryService.getAllCategories());
+                return "book/list";
         }
 }

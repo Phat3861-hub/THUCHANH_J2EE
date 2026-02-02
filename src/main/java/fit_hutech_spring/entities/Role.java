@@ -5,9 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.Hibernate;
-import java.util.ArrayList;
-import java.util.List;
+import org.springframework.security.core.GrantedAuthority;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -16,19 +17,26 @@ import java.util.Objects;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "category")
-public class Category {
+@Table(name = "role")
+public class Role implements GrantedAuthority {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Long id;
+    @NotBlank(message = "Name is required")
     @Column(name = "name", length = 50, nullable = false)
-    @Size(min = 1, max = 50, message = "Name must be between 1 and 50characters")
-    @NotBlank(message = "Name must not be blank")
+    @Size(max = 50, message = "Name must be less than 50 characters")
     private String name;
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
+    @Size(max = 250, message = "Description must be less than 250 characters")
+    @Column(name = "description", length = 250)
+    private String description;
+    @ManyToMany(mappedBy = "roles", cascade = CascadeType.ALL)
     @ToString.Exclude
-    private List<Book> books = new ArrayList<>();
+    private Set<User> users = new HashSet<>();
+
+    @Override
+    public String getAuthority() {
+        return name;
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -36,9 +44,9 @@ public class Category {
             return true;
         if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o))
             return false;
-        Category category = (Category) o;
+        Role role = (Role) o;
         return getId() != null && Objects.equals(getId(),
-                category.getId());
+                role.getId());
     }
 
     @Override
