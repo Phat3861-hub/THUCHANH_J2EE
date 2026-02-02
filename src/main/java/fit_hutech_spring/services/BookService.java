@@ -1,42 +1,46 @@
 package fit_hutech_spring.services;
 
 import fit_hutech_spring.entities.Book;
+import fit_hutech_spring.repositories.IBookRepository;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(isolation = Isolation.SERIALIZABLE, rollbackFor = { Exception.class, Throwable.class })
 public class BookService {
-    private final List<Book> books;
+    private final IBookRepository bookRepository;
 
-    public List<Book> getAllBooks() {
-        return books;
+    public List<Book> getAllBooks(Integer pageNo,
+            Integer pageSize,
+            String sortBy) {
+        return bookRepository.findAllBooks(pageNo, pageSize, sortBy);
     }
 
-    public Optional<Book> getBookById(Long id) {
-        return books.stream()
-                .filter(book -> book.getId().equals(id))
-                .findFirst();
+    // 1. Lấy sách theo ID (dùng cho Edit)
+    public Book getBookById(Long id) {
+        Optional<Book> optionalBook = bookRepository.findById(id);
+        return optionalBook.orElse(null);
     }
 
+    // 2. Thêm mới sách
     public void addBook(Book book) {
-        books.add(book);
+        bookRepository.save(book);
     }
 
+    // 3. Cập nhật sách
     public void updateBook(Book book) {
-        var bookOptional = getBookById(book.getId());
-        if (bookOptional.isPresent()) {
-            Book bookUpdate = bookOptional.get();
-            bookUpdate.setTitle(book.getTitle());
-            bookUpdate.setAuthor(book.getAuthor());
-            bookUpdate.setPrice(book.getPrice());
-            bookUpdate.setCategory(book.getCategory());
-        }
+        bookRepository.save(book); // Hàm save trong JPA tự động hiểu là update nếu ID đã tồn tại
     }
 
-    public void deleteBookById(Long id) {
-        getBookById(id).ifPresent(books::remove);
+    // 4. Xóa sách
+    public void deleteBook(Long id) {
+        bookRepository.deleteById(id);
     }
 }
